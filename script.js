@@ -1,13 +1,15 @@
 // ==========================================
 // CONFIGURACIÓN ADAFRUIT IO
 // ==========================================
-const AIO_USERNAME = "Fran25"; 
-const AIO_KEY = "aio_jDOm38mAzrSxmdNLAvw6ozzBb3qY";           
+const AIO_USERNAME = "Fran25";
+const AIO_KEY = "aio_jDOm38mAzrSxmdNLAvw6ozzBb3qY";
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
 
 let chartTemp, chartHum, chartLum, client;
+let reconnectTimeout = 2000;
+let reconnectAttempts = 0;
 
 // ==========================================
 // RELOJ EN TIEMPO REAL
@@ -17,9 +19,8 @@ function actualizarReloj() {
     const horas = String(ahora.getHours()).padStart(2, '0');
     const minutos = String(ahora.getMinutes()).padStart(2, '0');
     const segundos = String(ahora.getSeconds()).padStart(2, '0');
-    
     document.getElementById('reloj').textContent = `${horas}:${minutos}:${segundos}`;
-    
+
     const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const fechaFormateada = ahora.toLocaleDateString('es-PE', opciones);
     document.getElementById('fecha').textContent = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
@@ -139,168 +140,193 @@ chartLum = new Chart(ctxLum, {
 });
 
 // ==========================================
-// CONFIGURACIÓN PARA GRÁFICAS DE PASTEL
+// CONFIGURACIÓN PARA GRÁFICAS DE MEDIDOR
 // ==========================================
-const pieConfig = {
+const gaugeConfig = {
     responsive: true,
     maintainAspectRatio: false,
+    circumference: 180,
+    rotation: -90,
+    cutout: '75%',
     plugins: {
-        legend: {
-            position: 'bottom',
-            labels: {
-                color: '#94a3b8',
-                font: { size: 11, weight: '600' },
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle'
-            }
-        },
-        tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            padding: 12,
-            borderColor: 'rgba(59, 130, 246, 0.3)',
-            borderWidth: 1
-        }
+        legend: { display: false },
+        tooltip: { enabled: false }
     }
 };
 
-// Gráfica de pastel - Temperatura
+// Gráfica de medidor - Temperatura (0-100°C)
 const tempPieChart = new Chart(document.getElementById('tempPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Frío', 'Normal', 'Caliente'],
+        labels: ['Temperatura', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#3b82f6', '#ff6b6b'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 100],
+            backgroundColor: ['#ff6b6b', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
-// Gráfica de pastel - Humedad
+// Gráfica de medidor - Humedad (0-100%)
 const humPieChart = new Chart(document.getElementById('humPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Bajo', 'Normal', 'Alto'],
+        labels: ['Humedad', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#4ecdc4', '#2563eb'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 100],
+            backgroundColor: ['#4ecdc4', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
-// Gráfica de pastel - Luminosidad
+// Gráfica de medidor - Luminosidad (0-10)
 const lumPieChart = new Chart(document.getElementById('lumPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Oscuro', 'Medio', 'Brillante'],
+        labels: ['Luminosidad', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#fbbf24', '#f59e0b'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 10],
+            backgroundColor: ['#fbbf24', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
 // ==========================================
-// CONEXIÓN MQTT
+// FUNCIÓN PARA ACTUALIZAR MEDIDORES
+// ==========================================
+function updateGauge(chart, value, max) {
+    const clampedValue = Math.max(0, Math.min(value, max));
+    const remaining = max - clampedValue;
+    chart.data.datasets[0].data = [clampedValue, remaining];
+    chart.update('none');
+}
+
+// ==========================================
+// CONEXIÓN MQTT CON RECONEXIÓN AUTOMÁTICA
 // ==========================================
 function connectMQTT() {
-    console.log("Conectando a Adafruit IO...");
-    let clientID = "clientID-" + parseInt(Math.random() * 100);
-    client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
+    console.log("Intentando conectar a Adafruit IO...");
+    console.log("Usuario:", AIO_USERNAME);
+    let clientID = "clientID_" + Math.random().toString(16).substr(2, 8);
 
-    client.onConnectionLost = onConnectionLost;
-    client.onMessageArrived = onMessageArrived;
+    try {
+        // ✅ CORRECCIÓN: SIN el parámetro "/mqtt" y sin Number()
+        client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
+        
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
 
-    let options = {
-        useSSL: true,
-        userName: AIO_USERNAME,
-        password: AIO_KEY,
-        onSuccess: onConnect,
-        onFailure: doFail
+        let options = {
+            timeout: 10,
+            useSSL: true,
+            userName: AIO_USERNAME,
+            password: AIO_KEY,
+            onSuccess: onConnect,
+            onFailure: doFail,
+            keepAliveInterval: 30,
+            cleanSession: true,
+            reconnect: true
+        };
+
+        client.connect(options);
+    } catch(error) {
+        console.error("Error al crear cliente MQTT:", error);
+        updateStatusBadge("ERROR", false);
+        setTimeout(connectMQTT, reconnectTimeout);
     }
-    client.connect(options);
 }
 
 function onConnect() {
-    console.log("¡Conectado a Adafruit IO!");
-    document.getElementById('status-badge').innerHTML = '<span class="status-dot"></span>CONECTADO';
-    client.subscribe(FEED_TEMP);
-    client.subscribe(FEED_HUM);
-    client.subscribe(FEED_LUM);
+    console.log("¡Conectado exitosamente a Adafruit IO!");
+    reconnectAttempts = 0;
+    updateStatusBadge("CONECTADO", true);
+
+    try {
+        console.log("Suscribiéndose a feeds...");
+        client.subscribe(FEED_TEMP, {qos: 0});
+        client.subscribe(FEED_HUM, {qos: 0});
+        client.subscribe(FEED_LUM, {qos: 0});
+        console.log("Suscrito a todos los feeds correctamente");
+    } catch(error) {
+        console.error("Error al suscribirse:", error);
+    }
 }
 
-function doFail(e) { 
-    console.log("Fallo conexión", e); 
-    document.getElementById('status-badge').innerHTML = '<span class="status-dot" style="background:#ef4444;box-shadow:0 0 15px #ef4444"></span>DESCONECTADO';
+function doFail(e) {
+    console.error("Error de conexión:", e);
+    console.log("Código de error:", e.errorCode);
+    console.log("Mensaje de error:", e.errorMessage);
+    reconnectAttempts++;
+    updateStatusBadge("DESCONECTADO", false);
+
+    // Reintentar conexión con backoff exponencial
+    let delay = Math.min(reconnectTimeout * Math.pow(1.5, reconnectAttempts), 30000);
+    console.log(`Reintentando en ${delay/1000} segundos... (intento ${reconnectAttempts})`);
+    setTimeout(connectMQTT, delay);
 }
 
 function onConnectionLost(responseObject) {
     if (responseObject.errorCode !== 0) {
-        console.log("Conexión perdida: " + responseObject.errorMessage);
-        document.getElementById('status-badge').innerHTML = '<span class="status-dot" style="background:#ef4444;box-shadow:0 0 15px #ef4444"></span>DESCONECTADO';
+        console.log("Conexión perdida:", responseObject.errorMessage);
+        updateStatusBadge("RECONECTANDO...", false);
+        // Intentar reconectar
+        setTimeout(connectMQTT, reconnectTimeout);
+    }
+}
+
+function updateStatusBadge(text, isConnected) {
+    const badge = document.getElementById('status-badge');
+    if (isConnected) {
+        badge.innerHTML = '<span class="status-dot"></span>' + text;
+        badge.style.background = 'rgba(34, 197, 94, 0.1)';
+        badge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+        badge.style.color = '#22c55e';
+    } else {
+        badge.innerHTML = '<span class="status-dot offline"></span>' + text;
+        badge.style.background = 'rgba(239, 68, 68, 0.1)';
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        badge.style.color = '#ef4444';
     }
 }
 
 function onMessageArrived(message) {
     let topic = message.destinationName;
     let payload = message.payloadString;
-    
+    console.log("Mensaje recibido:", topic, "=", payload);
+
     let now = new Date();
-    let timeLabel = now.getHours() + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
+    let timeLabel = now.getHours() + ":" + 
+                   now.getMinutes().toString().padStart(2, '0') + ":" + 
+                   now.getSeconds().toString().padStart(2, '0');
 
     if (topic === FEED_TEMP) {
         let valor = parseFloat(payload);
         document.getElementById("temp-value").innerText = valor.toFixed(1);
         document.getElementById("temp-mini").innerText = valor.toFixed(1);
         updateSpecificChart(chartTemp, timeLabel, payload);
-        
-        // Actualizar gráfico de pastel de temperatura
-        let frio = 0, normal = 0, caliente = 0;
-        if (valor < 18) frio = 100;
-        else if (valor < 28) normal = 100;
-        else caliente = 100;
-        tempPieChart.data.datasets[0].data = [frio, normal, caliente];
-        tempPieChart.update('none');
-    }
+        updateGauge(tempPieChart, valor, 100);
+    } 
     else if (topic === FEED_HUM) {
         let valor = parseFloat(payload);
         document.getElementById("hum-value").innerText = valor.toFixed(1);
         document.getElementById("hum-mini").innerText = valor.toFixed(1);
         updateSpecificChart(chartHum, timeLabel, payload);
-        
-        // Actualizar gráfico de pastel de humedad
-        let bajo = 0, normal = 0, alto = 0;
-        if (valor < 40) bajo = 100;
-        else if (valor < 70) normal = 100;
-        else alto = 100;
-        humPieChart.data.datasets[0].data = [bajo, normal, alto];
-        humPieChart.update('none');
-    }
+        updateGauge(humPieChart, valor, 100);
+    } 
     else if (topic === FEED_LUM) {
         let valor = parseFloat(payload);
-        document.getElementById("lum-value").innerText = valor.toFixed(0);
-        document.getElementById("lum-mini").innerText = valor.toFixed(0);
+        document.getElementById("lum-value").innerText = valor.toFixed(2);
+        document.getElementById("lum-mini").innerText = valor.toFixed(2);
         updateSpecificChart(chartLum, timeLabel, payload);
-        
-        // Actualizar gráfico de pastel de luminosidad
-        let oscuro = 0, medio = 0, brillante = 0;
-        if (valor < 200) oscuro = 100;
-        else if (valor < 500) medio = 100;
-        else brillante = 100;
-        lumPieChart.data.datasets[0].data = [oscuro, medio, brillante];
-        lumPieChart.update('none');
+        updateGauge(lumPieChart, valor, 10);
     }
 }
 
@@ -317,6 +343,9 @@ function updateSpecificChart(chartInstance, label, dataPoint) {
 }
 
 // ==========================================
-// INICIAR CONEXIÓN
+// INICIAR CONEXIÓN AL CARGAR LA PÁGINA
 // ==========================================
-connectMQTT();
+window.addEventListener('load', function() {
+    console.log("Página cargada, iniciando conexión MQTT...");
+    connectMQTT();
+});
