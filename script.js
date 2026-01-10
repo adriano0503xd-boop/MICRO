@@ -3,13 +3,10 @@
 // ==========================================
 const AIO_USERNAME = "Fran25";
 const AIO_KEY = "aio_rXMK98tltTFyTFISHsSwhRj3eiGE";
-const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
-const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
-const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
+const API_BASE = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds`;
 
-let chartTemp, chartHum, chartLum, client;
-let reconnectTimeout = 2000;
-let reconnectAttempts = 0;
+let chartTemp, chartHum, chartLum;
+let updateInterval = 3000; // Actualizar cada 3 segundos
 
 // ==========================================
 // RELOJ EN TIEMPO REAL
@@ -184,13 +181,13 @@ const humPieChart = new Chart(document.getElementById('humPieChart'), {
     options: gaugeConfig
 });
 
-// Gráfica de medidor - Luminosidad (0-10)
+// Gráfica de medidor - Luminosidad (0-1000)
 const lumPieChart = new Chart(document.getElementById('lumPieChart'), {
     type: 'doughnut',
     data: {
         labels: ['Luminosidad', 'Restante'],
         datasets: [{
-            data: [0, 10],
+            data: [0, 1000],
             backgroundColor: ['#fbbf24', 'rgba(59, 130, 246, 0.1)'],
             borderWidth: 0,
             borderRadius: 10
@@ -210,99 +207,84 @@ function updateGauge(chart, value, max) {
 }
 
 // ==========================================
-// CONEXIÓN MQTT CON RECONEXIÓN AUTOMÁTICA Y DIAGNÓSTICO
+// OBTENER DATOS VIA HTTP API
 // ==========================================
-function connectMQTT() {
-    console.log("🔄 Conectando a Adafruit IO...");
-    console.log("📌 Username:", AIO_USERNAME);
-    console.log("🔑 Key (primeros 10 chars):", AIO_KEY.substring(0, 10) + "...");
-    console.log("📡 Feeds a suscribir:");
-    console.log("  - ", FEED_TEMP);
-    console.log("  - ", FEED_HUM);
-    console.log("  - ", FEED_LUM);
-    
-    let clientID = "clientID-" + parseInt(Math.random() * 100000);
-    console.log("🆔 Client ID:", clientID);
-    
-    client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
-    
-    client.onConnectionLost = onConnectionLost;
-    client.onMessageArrived = onMessageArrived;
-    
-    let options = {
-        useSSL: true,
-        userName: AIO_USERNAME,
-        password: AIO_KEY,
-        onSuccess: onConnect,
-        onFailure: doFail,
-        timeout: 10,
-        keepAliveInterval: 30
-    };
-    
-    console.log("⚙️ Opciones de conexión configuradas");
-    client.connect(options);
-}
-
-function onConnect() {
-    console.log("✅ ¡Conectado a Adafruit IO exitosamente!");
-    reconnectAttempts = 0;
-    updateStatusBadge("CONECTADO", true);
-    
-    console.log("📬 Suscribiéndose a feeds...");
-    client.subscribe(FEED_TEMP);
-    console.log("  ✓ Suscrito a:", FEED_TEMP);
-    
-    client.subscribe(FEED_HUM);
-    console.log("  ✓ Suscrito a:", FEED_HUM);
-    
-    client.subscribe(FEED_LUM);
-    console.log("  ✓ Suscrito a:", FEED_LUM);
-    
-    console.log("🎉 Todos los feeds suscritos correctamente");
-}
-
-function doFail(e) {
-    console.error("❌ ============================================");
-    console.error("❌ ERROR DE CONEXIÓN A ADAFRUIT IO");
-    console.error("❌ ============================================");
-    console.error("📋 Código de error:", e.errorCode);
-    console.error("📋 Mensaje:", e.errorMessage);
-    console.error("📋 Objeto completo:", e);
-    console.error("");
-    
-    // Análisis específico del error
-    if (e.errorCode === 5) {
-        console.error("🔍 DIAGNÓSTICO:");
-        console.error("   Error Code 5 = Autorización rechazada");
-        console.error("   Posibles causas:");
-        console.error("   1. Username incorrecto (verifica: '" + AIO_USERNAME + "')");
-        console.error("   2. API Key incorrecta o expirada");
-        console.error("   3. La clave fue regenerada en Adafruit IO");
-        console.error("");
-        console.error("💡 SOLUCIÓN:");
-        console.error("   1. Ve a https://io.adafruit.com");
-        console.error("   2. Haz clic en el ícono de llave dorada (arriba derecha)");
-        console.error("   3. Copia tu 'Active Key'");
-        console.error("   4. Actualiza AIO_KEY en script.js");
+async function fetchFeedData(feedName) {
+    try {
+        const response = await fetch(`${API_BASE}/${feedName}/data/last`, {
+            headers: {
+                'X-AIO-Key': AIO_KEY
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        return parseFloat(data.value);
+    } catch (error) {
+        console.error(`❌ Error obteniendo ${feedName}:`, error);
+        return null;
     }
-    
-    reconnectAttempts++;
-    updateStatusBadge("DESCONECTADO", false);
-    
-    let delay = Math.min(reconnectTimeout * Math.pow(1.5, reconnectAttempts), 30000);
-    console.log(`⏳ Reintentando en ${delay/1000} segundos... (intento ${reconnectAttempts})`);
-    console.error("❌ ============================================");
-    
-    setTimeout(connectMQTT, delay);
 }
 
-function onConnectionLost(responseObject) {
-    if (responseObject.errorCode !== 0) {
-        console.warn("⚠️ Conexión perdida:", responseObject.errorMessage);
-        console.log("🔄 Intentando reconectar automáticamente...");
-        updateStatusBadge("RECONECTANDO...", false);
-        setTimeout(connectMQTT, reconnectTimeout);
+async function updateAllSensors() {
+    try {
+        // Obtener temperatura
+        const temp = await fetchFeedData('temperatura');
+        if (temp !== null) {
+            document.getElementById("temp-value").innerText = temp.toFixed(1);
+            document.getElementById("temp-mini").innerText = temp.toFixed(1);
+            updateChart(chartTemp, temp);
+            updateGauge(tempPieChart, temp, 100);
+            console.log("🌡️ Temperatura:", temp + "°C");
+        }
+
+        // Obtener humedad
+        const hum = await fetchFeedData('humedad');
+        if (hum !== null) {
+            document.getElementById("hum-value").innerText = hum.toFixed(1);
+            document.getElementById("hum-mini").innerText = hum.toFixed(1);
+            updateChart(chartHum, hum);
+            updateGauge(humPieChart, hum, 100);
+            console.log("💧 Humedad:", hum + "%");
+        }
+
+        // Obtener luminosidad
+        const lum = await fetchFeedData('luminosidad');
+        if (lum !== null) {
+            document.getElementById("lum-value").innerText = lum.toFixed(2);
+            document.getElementById("lum-mini").innerText = lum.toFixed(2);
+            updateChart(chartLum, lum);
+            updateGauge(lumPieChart, lum, 1000);
+            console.log("💡 Luminosidad:", lum + " lux");
+        }
+
+        // Actualizar badge
+        updateStatusBadge("CONECTADO", true);
+
+    } catch (error) {
+        console.error("❌ Error general:", error);
+        updateStatusBadge("ERROR", false);
     }
+}
+
+function updateChart(chartInstance, value) {
+    const now = new Date();
+    const timeLabel = now.getHours() + ":" + 
+                     now.getMinutes().toString().padStart(2, '0') + ":" + 
+                     now.getSeconds().toString().padStart(2, '0');
+
+    chartInstance.data.labels.push(timeLabel);
+    chartInstance.data.datasets[0].data.push(value);
+
+    if (chartInstance.data.labels.length > 20) {
+        chartInstance.data.labels.shift();
+        chartInstance.data.datasets[0].data.shift();
+    }
+
+    chartInstance.update('none');
 }
 
 function updateStatusBadge(text, isConnected) {
@@ -320,63 +302,17 @@ function updateStatusBadge(text, isConnected) {
     }
 }
 
-function onMessageArrived(message) {
-    let topic = message.destinationName;
-    let payload = message.payloadString;
-    console.log("📨 Mensaje recibido →", topic, "=", payload);
-
-    let now = new Date();
-    let timeLabel = now.getHours() + ":" + 
-                   now.getMinutes().toString().padStart(2, '0') + ":" + 
-                   now.getSeconds().toString().padStart(2, '0');
-
-    if (topic === FEED_TEMP) {
-        let valor = parseFloat(payload);
-        document.getElementById("temp-value").innerText = valor.toFixed(1);
-        document.getElementById("temp-mini").innerText = valor.toFixed(1);
-        updateSpecificChart(chartTemp, timeLabel, payload);
-        updateGauge(tempPieChart, valor, 100);
-        console.log("🌡️ Temperatura actualizada:", valor + "°C");
-    } 
-    else if (topic === FEED_HUM) {
-        let valor = parseFloat(payload);
-        document.getElementById("hum-value").innerText = valor.toFixed(1);
-        document.getElementById("hum-mini").innerText = valor.toFixed(1);
-        updateSpecificChart(chartHum, timeLabel, payload);
-        updateGauge(humPieChart, valor, 100);
-        console.log("💧 Humedad actualizada:", valor + "%");
-    } 
-    else if (topic === FEED_LUM) {
-        let valor = parseFloat(payload);
-        document.getElementById("lum-value").innerText = valor.toFixed(2);
-        document.getElementById("lum-mini").innerText = valor.toFixed(2);
-        updateSpecificChart(chartLum, timeLabel, payload);
-        updateGauge(lumPieChart, valor, 10);
-        console.log("💡 Luminosidad actualizada:", valor + " lux");
-    }
-}
-
-function updateSpecificChart(chartInstance, label, dataPoint) {
-    chartInstance.data.labels.push(label);
-    chartInstance.data.datasets[0].data.push(dataPoint);
-
-    if (chartInstance.data.labels.length > 20) {
-        chartInstance.data.labels.shift();
-        chartInstance.data.datasets[0].data.shift();
-    }
-
-    chartInstance.update('none');
-}
-
 // ==========================================
-// INICIAR CONEXIÓN AL CARGAR LA PÁGINA
+// INICIAR ACTUALIZACIÓN AUTOMÁTICA
 // ==========================================
 window.addEventListener('load', function() {
-    console.log("🚀 ============================================");
     console.log("🚀 MONITOR FLASHTEMP INICIANDO");
-    console.log("🚀 ============================================");
-    console.log("📅 Fecha:", new Date().toLocaleString('es-PE'));
-    console.log("🌐 Página cargada, iniciando conexión MQTT...");
-    console.log("");
-    connectMQTT();
+    console.log("📡 Usando HTTP API en lugar de MQTT");
+    console.log("🔄 Actualizando cada", updateInterval/1000, "segundos");
+    
+    // Primera actualización inmediata
+    updateAllSensors();
+    
+    // Actualizar periódicamente
+    setInterval(updateAllSensors, updateInterval);
 });
