@@ -212,7 +212,13 @@ function updateGauge(chart, value, max) {
 // ==========================================
 function connectMQTT() {
     console.log("🔄 Conectando a Adafruit IO...");
-    let clientID = "clientID-" + parseInt(Math.random() * 100);
+    console.log("👤 Username:", AIO_USERNAME);
+    console.log("🔑 Key:", AIO_KEY.substring(0, 15) + "...");
+    
+    // ClientID único con timestamp
+    let clientID = "flashtemp-" + Date.now() + "-" + parseInt(Math.random() * 1000);
+    console.log("🆔 ClientID:", clientID);
+    
     client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
     
     client.onConnectionLost = onConnectionLost;
