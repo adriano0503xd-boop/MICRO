@@ -2,7 +2,7 @@
 // CONFIGURACIÓN ADAFRUIT IO
 // ==========================================
 const AIO_USERNAME = "Fran25";
-const AIO_KEY = "aio_jDOm38mAzrSxmdNLAvw6ozzBb3qY";
+const AIO_KEY = "aio_ZMfE62RkD8JTITuddoyz7MxJi6oF";
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
@@ -232,8 +232,8 @@ function connectMQTT() {
             onSuccess: onConnect,
             onFailure: doFail,
             keepAliveInterval: 30,
-            cleanSession: true,
-            reconnect: true
+            cleanSession: true
+            // ✅ ELIMINADO: reconnect: true (no es válido en Paho MQTT)
         };
 
         client.connect(options);
