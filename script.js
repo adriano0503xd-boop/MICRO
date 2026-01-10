@@ -232,29 +232,21 @@ function connectMQTT() {
 }
 
 function onConnect() {
-    console.log("¡Conectado exitosamente a Adafruit IO!");
+    console.log("¡Conectado a Adafruit IO!");
     reconnectAttempts = 0;
     updateStatusBadge("CONECTADO", true);
-
-    try {
-        console.log("Suscribiéndose a feeds...");
-        client.subscribe(FEED_TEMP);
-        client.subscribe(FEED_HUM);
-        client.subscribe(FEED_LUM);
-        console.log("Suscrito a todos los feeds correctamente");
-    } catch(error) {
-        console.error("Error al suscribirse:", error);
-    }
+    
+    client.subscribe(FEED_TEMP);
+    client.subscribe(FEED_HUM);
+    client.subscribe(FEED_LUM);
+    console.log("Suscrito a todos los feeds correctamente");
 }
 
 function doFail(e) {
-    console.error("Error de conexión:", e);
-    console.log("Código de error:", e.errorCode);
-    console.log("Mensaje de error:", e.errorMessage);
+    console.log("Error de conexión:", e);
     reconnectAttempts++;
     updateStatusBadge("DESCONECTADO", false);
-
-    // Reintentar conexión con backoff exponencial
+    
     let delay = Math.min(reconnectTimeout * Math.pow(1.5, reconnectAttempts), 30000);
     console.log(`Reintentando en ${delay/1000} segundos... (intento ${reconnectAttempts})`);
     setTimeout(connectMQTT, delay);
