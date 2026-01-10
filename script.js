@@ -8,7 +8,7 @@ const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
 
 let chartTemp, chartHum, chartLum, client;
-let reconnectTimeout = 1000;
+let reconnectTimeout = 2000;
 let reconnectAttempts = 0;
 
 // ==========================================
