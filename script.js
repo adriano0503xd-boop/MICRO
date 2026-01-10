@@ -251,9 +251,9 @@ function onConnect() {
 
     try {
         console.log("Suscribiéndose a feeds...");
-        client.subscribe(FEED_TEMP, {qos: 0});
-        client.subscribe(FEED_HUM, {qos: 0});
-        client.subscribe(FEED_LUM, {qos: 0});
+        client.subscribe(FEED_TEMP);
+        client.subscribe(FEED_HUM);
+        client.subscribe(FEED_LUM);
         console.log("Suscrito a todos los feeds correctamente");
     } catch(error) {
         console.error("Error al suscribirse:", error);
