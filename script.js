@@ -6,6 +6,7 @@ const AIO_KEY = "aio_jDOm38mAzrSxmdNLAvw6ozzBb3qY";
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
+
 let chartTemp, chartHum, chartLum, client;
 
 // ==========================================
