@@ -218,13 +218,20 @@ async function fetchFeedData(feedName) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (response.status === 404) {
+                console.warn(`⚠️ Feed "${feedName}" no encontrado en Adafruit IO`);
+            } else if (response.status === 401) {
+                console.warn(`⚠️ No autorizado para acceder a "${feedName}". Verifica que exista.`);
+            } else {
+                console.error(`❌ HTTP ${response.status}: ${response.statusText}`);
+            }
+            return null;
         }
         
         const data = await response.json();
         return parseFloat(data.value);
     } catch (error) {
-        console.error(`❌ Error obteniendo ${feedName}:`, error);
+        console.error(`❌ Error obteniendo ${feedName}:`, error.message);
         return null;
     }
 }
