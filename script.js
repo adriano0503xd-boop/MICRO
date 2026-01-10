@@ -2,7 +2,7 @@
 // CONFIGURACIÓN ADAFRUIT IO
 // ==========================================
 const AIO_USERNAME = "Fran25";
-const AIO_KEY = "aio_vBKB0906QiSoVEFHt3PVeYb0GBsL";
+const AIO_KEY = "aio_xMPG535tY6PDNKh7XDBf3UPnoWnZ";
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
