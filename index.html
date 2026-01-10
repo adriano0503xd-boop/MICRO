@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitor Esencial</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <!-- Chart.js (no se usa, pero por si lo necesitas después) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>  <!-- Paho MQTT -->
+    <!-- Cargar Chart.js (opcional, por si lo necesitas después) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Cargar Paho MQTT (versión 1.0.1 para compatibilidad) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 </head>
 <body>
     <h1>Monitor Esencial - Valores en Tiempo Real</h1>
@@ -15,6 +17,7 @@
         <p>Humedad: <span id="hum-value">--</span> %</p>
         <p>Luminosidad: <span id="lum-value">--</span> lux</p>
     </div>
+    <!-- Cargar tu script al final -->
     <script src="script.js"></script>
 </body>
 </html>
