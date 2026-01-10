@@ -3,10 +3,11 @@
 // ==========================================
 const AIO_USERNAME = "Fran25";
 const AIO_KEY = "aio_rXMK98tltTFyTFISHsSwhRj3eiGE";
-const API_BASE = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds`;
+const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
+const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
+const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
 
-let chartTemp, chartHum, chartLum;
-let updateInterval = 3000; // Actualizar cada 3 segundos
+let chartTemp, chartHum, chartLum, client;
 
 // ==========================================
 // RELOJ EN TIEMPO REAL
@@ -181,13 +182,13 @@ const humPieChart = new Chart(document.getElementById('humPieChart'), {
     options: gaugeConfig
 });
 
-// Gráfica de medidor - Luminosidad (0-1000)
+// Gráfica de medidor - Luminosidad (0-10)
 const lumPieChart = new Chart(document.getElementById('lumPieChart'), {
     type: 'doughnut',
     data: {
         labels: ['Luminosidad', 'Restante'],
         datasets: [{
-            data: [0, 1000],
+            data: [0, 10],
             backgroundColor: ['#fbbf24', 'rgba(59, 130, 246, 0.1)'],
             borderWidth: 0,
             borderRadius: 10
@@ -207,91 +208,48 @@ function updateGauge(chart, value, max) {
 }
 
 // ==========================================
-// OBTENER DATOS VIA HTTP API
+// CONEXIÓN MQTT (IGUAL QUE TU CÓDIGO QUE FUNCIONA)
 // ==========================================
-async function fetchFeedData(feedName) {
-    try {
-        const response = await fetch(`${API_BASE}/${feedName}/data/last`, {
-            headers: {
-                'X-AIO-Key': AIO_KEY
-            }
-        });
-        
-        if (!response.ok) {
-            if (response.status === 404) {
-                console.warn(`⚠️ Feed "${feedName}" no encontrado en Adafruit IO`);
-            } else if (response.status === 401) {
-                console.warn(`⚠️ No autorizado para acceder a "${feedName}". Verifica que exista.`);
-            } else {
-                console.error(`❌ HTTP ${response.status}: ${response.statusText}`);
-            }
-            return null;
-        }
-        
-        const data = await response.json();
-        return parseFloat(data.value);
-    } catch (error) {
-        console.error(`❌ Error obteniendo ${feedName}:`, error.message);
-        return null;
-    }
+function connectMQTT() {
+    console.log("🔄 Conectando a Adafruit IO...");
+    let clientID = "clientID-" + parseInt(Math.random() * 100);
+    client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
+    
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+    
+    let options = {
+        useSSL: true,
+        userName: AIO_USERNAME,
+        password: AIO_KEY,
+        onSuccess: onConnect,
+        onFailure: doFail
+    };
+    
+    client.connect(options);
 }
 
-async function updateAllSensors() {
-    try {
-        // Obtener temperatura
-        const temp = await fetchFeedData('temperatura');
-        if (temp !== null) {
-            document.getElementById("temp-value").innerText = temp.toFixed(1);
-            document.getElementById("temp-mini").innerText = temp.toFixed(1);
-            updateChart(chartTemp, temp);
-            updateGauge(tempPieChart, temp, 100);
-            console.log("🌡️ Temperatura:", temp + "°C");
-        }
-
-        // Obtener humedad
-        const hum = await fetchFeedData('humedad');
-        if (hum !== null) {
-            document.getElementById("hum-value").innerText = hum.toFixed(1);
-            document.getElementById("hum-mini").innerText = hum.toFixed(1);
-            updateChart(chartHum, hum);
-            updateGauge(humPieChart, hum, 100);
-            console.log("💧 Humedad:", hum + "%");
-        }
-
-        // Obtener luminosidad
-        const lum = await fetchFeedData('luminosidad');
-        if (lum !== null) {
-            document.getElementById("lum-value").innerText = lum.toFixed(2);
-            document.getElementById("lum-mini").innerText = lum.toFixed(2);
-            updateChart(chartLum, lum);
-            updateGauge(lumPieChart, lum, 1000);
-            console.log("💡 Luminosidad:", lum + " lux");
-        }
-
-        // Actualizar badge
-        updateStatusBadge("CONECTADO", true);
-
-    } catch (error) {
-        console.error("❌ Error general:", error);
-        updateStatusBadge("ERROR", false);
-    }
+function onConnect() {
+    console.log("✅ ¡Conectado a Adafruit IO!");
+    updateStatusBadge("CONECTADO", true);
+    
+    client.subscribe(FEED_TEMP);
+    client.subscribe(FEED_HUM);
+    client.subscribe(FEED_LUM);
+    console.log("📬 Suscrito a todos los feeds");
 }
 
-function updateChart(chartInstance, value) {
-    const now = new Date();
-    const timeLabel = now.getHours() + ":" + 
-                     now.getMinutes().toString().padStart(2, '0') + ":" + 
-                     now.getSeconds().toString().padStart(2, '0');
+function doFail(e) {
+    console.error("❌ Error de conexión:", e);
+    updateStatusBadge("DESCONECTADO", false);
+}
 
-    chartInstance.data.labels.push(timeLabel);
-    chartInstance.data.datasets[0].data.push(value);
-
-    if (chartInstance.data.labels.length > 20) {
-        chartInstance.data.labels.shift();
-        chartInstance.data.datasets[0].data.shift();
+function onConnectionLost(responseObject) {
+    if (responseObject.errorCode !== 0) {
+        console.warn("⚠️ Conexión perdida:", responseObject.errorMessage);
+        updateStatusBadge("DESCONECTADO", false);
+        setTimeout(connectMQTT, 3000); // Reintentar en 3 segundos
     }
-
-    chartInstance.update('none');
 }
 
 function updateStatusBadge(text, isConnected) {
@@ -310,16 +268,61 @@ function updateStatusBadge(text, isConnected) {
 }
 
 // ==========================================
-// INICIAR ACTUALIZACIÓN AUTOMÁTICA
+// RECIBIR MENSAJES MQTT
+// ==========================================
+function onMessageArrived(message) {
+    let topic = message.destinationName;
+    let payload = message.payloadString;
+    console.log("📨 Mensaje:", topic, "=", payload);
+
+    let now = new Date();
+    let timeLabel = now.getHours() + ":" + 
+                   now.getMinutes().toString().padStart(2, '0') + ":" + 
+                   now.getSeconds().toString().padStart(2, '0');
+
+    if (topic === FEED_TEMP) {
+        let valor = parseFloat(payload);
+        document.getElementById("temp-value").innerText = valor.toFixed(1);
+        document.getElementById("temp-mini").innerText = valor.toFixed(1);
+        updateSpecificChart(chartTemp, timeLabel, payload);
+        updateGauge(tempPieChart, valor, 100);
+        console.log("🌡️ Temperatura:", valor + "°C");
+    } 
+    else if (topic === FEED_HUM) {
+        let valor = parseFloat(payload);
+        document.getElementById("hum-value").innerText = valor.toFixed(1);
+        document.getElementById("hum-mini").innerText = valor.toFixed(1);
+        updateSpecificChart(chartHum, timeLabel, payload);
+        updateGauge(humPieChart, valor, 100);
+        console.log("💧 Humedad:", valor + "%");
+    } 
+    else if (topic === FEED_LUM) {
+        let valor = parseFloat(payload);
+        document.getElementById("lum-value").innerText = valor.toFixed(2);
+        document.getElementById("lum-mini").innerText = valor.toFixed(2);
+        updateSpecificChart(chartLum, timeLabel, payload);
+        updateGauge(lumPieChart, valor, 10);
+        console.log("💡 Luminosidad:", valor + " lux");
+    }
+}
+
+function updateSpecificChart(chartInstance, label, dataPoint) {
+    chartInstance.data.labels.push(label);
+    chartInstance.data.datasets[0].data.push(dataPoint);
+
+    if (chartInstance.data.labels.length > 20) {
+        chartInstance.data.labels.shift();
+        chartInstance.data.datasets[0].data.shift();
+    }
+
+    chartInstance.update();
+}
+
+// ==========================================
+// INICIAR AL CARGAR LA PÁGINA
 // ==========================================
 window.addEventListener('load', function() {
     console.log("🚀 MONITOR FLASHTEMP INICIANDO");
-    console.log("📡 Usando HTTP API en lugar de MQTT");
-    console.log("🔄 Actualizando cada", updateInterval/1000, "segundos");
-    
-    // Primera actualización inmediata
-    updateAllSensors();
-    
-    // Actualizar periódicamente
-    setInterval(updateAllSensors, updateInterval);
+    console.log("📅", new Date().toLocaleString('es-PE'));
+    connectMQTT();
 });
