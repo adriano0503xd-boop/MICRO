@@ -2,7 +2,7 @@
 // CONFIGURACIÓN (¡PON TUS DATOS AQUÍ!)
 // ==========================================
 const AIO_USERNAME = "Fran25";
-const AIO_KEY = "aio_SVNj41Z3zESbiAoW9RXxFRDYXl2m";     
+const AIO_KEY = "aio_rXMK98tltTFyTFISHsSwhRj3eiGE";     
 
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
