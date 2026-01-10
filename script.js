@@ -2,7 +2,7 @@
 // CONFIGURACIÓN ADAFRUIT IO
 // ==========================================
 const AIO_USERNAME = "Fran25";
-const AIO_KEY = "aio_xMPG535tY6PDNKh7XDBf3UPnoWnZ";
+const AIO_KEY = "aio_xMPG535tY6PDNconKh7XDBf3UPnoWnZ";
 const FEED_TEMP = AIO_USERNAME + "/feeds/temperatura";
 const FEED_HUM = AIO_USERNAME + "/feeds/humedad";
 const FEED_LUM = AIO_USERNAME + "/feeds/luminosidad";
@@ -213,31 +213,22 @@ function updateGauge(chart, value, max) {
 // CONEXIÓN MQTT CON RECONEXIÓN AUTOMÁTICA
 // ==========================================
 function connectMQTT() {
-    console.log("Intentando conectar a Adafruit IO...");
-    console.log("Usuario:", AIO_USERNAME);
-    let clientID = "clientID_" + Math.random().toString(16).substr(2, 8);
-
-    try {
-        // ✅ CORRECCIÓN: SIN el parámetro "/mqtt" y sin Number()
-        client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
-        
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
-
-        let options = {
-            useSSL: true,
-            userName: AIO_USERNAME,
-            password: AIO_KEY,
-            onSuccess: onConnect,
-            onFailure: doFail
-        };
-
-        client.connect(options);
-    } catch(error) {
-        console.error("Error al crear cliente MQTT:", error);
-        updateStatusBadge("ERROR", false);
-        setTimeout(connectMQTT, reconnectTimeout);
-    }
+    console.log("Conectando a Adafruit IO...");
+    let clientID = "clientID-" + parseInt(Math.random() * 100000);
+    client = new Paho.MQTT.Client("io.adafruit.com", 443, clientID);
+    
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+    
+    let options = {
+        useSSL: true,
+        userName: AIO_USERNAME,
+        password: AIO_KEY,
+        onSuccess: onConnect,
+        onFailure: doFail
+    };
+    
+    client.connect(options);
 }
 
 function onConnect() {
