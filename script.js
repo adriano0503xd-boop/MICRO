@@ -225,15 +225,11 @@ function connectMQTT() {
         client.onMessageArrived = onMessageArrived;
 
         let options = {
-            timeout: 10,
             useSSL: true,
             userName: AIO_USERNAME,
             password: AIO_KEY,
             onSuccess: onConnect,
-            onFailure: doFail,
-            keepAliveInterval: 30,
-            cleanSession: true
-            // ✅ ELIMINADO: reconnect: true (no es válido en Paho MQTT)
+            onFailure: doFail
         };
 
         client.connect(options);
