@@ -141,77 +141,63 @@ chartLum = new Chart(ctxLum, {
 });
 
 // ==========================================
-// CONFIGURACIÓN PARA GRÁFICAS DE PASTEL
+// CONFIGURACIÓN PARA MEDIDORES TIPO GAUGE (SEMICÍRCULOS)
 // ==========================================
-const pieConfig = {
+const gaugeConfig = {
     responsive: true,
     maintainAspectRatio: false,
+    circumference: 180,
+    rotation: -90,
+    cutout: '75%',
     plugins: {
-        legend: {
-            position: 'bottom',
-            labels: {
-                color: '#94a3b8',
-                font: { size: 11, weight: '600' },
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle'
-            }
-        },
-        tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            padding: 12,
-            borderColor: 'rgba(59, 130, 246, 0.3)',
-            borderWidth: 1
-        }
+        legend: { display: false },
+        tooltip: { enabled: false }
     }
 };
 
-// Gráfica de pastel - Temperatura
+// Medidor de Temperatura (0-100°C)
 const tempPieChart = new Chart(document.getElementById('tempPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Frío', 'Normal', 'Caliente'],
+        labels: ['Valor', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#3b82f6', '#ff6b6b'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 100],
+            backgroundColor: ['#ff6b6b', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
-// Gráfica de pastel - Humedad
+// Medidor de Humedad (0-100%)
 const humPieChart = new Chart(document.getElementById('humPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Bajo', 'Normal', 'Alto'],
+        labels: ['Valor', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#4ecdc4', '#2563eb'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 100],
+            backgroundColor: ['#4ecdc4', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
-// Gráfica de pastel - Luminosidad
+// Medidor de Luminosidad (0-1)
 const lumPieChart = new Chart(document.getElementById('lumPieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Oscuro', 'Medio', 'Brillante'],
+        labels: ['Valor', 'Restante'],
         datasets: [{
-            data: [33, 34, 33],
-            backgroundColor: ['#60a5fa', '#fbbf24', '#f59e0b'],
-            borderWidth: 4,
-            borderColor: 'rgba(15, 23, 42, 0.8)',
-            hoverOffset: 8
+            data: [0, 1],
+            backgroundColor: ['#fbbf24', 'rgba(59, 130, 246, 0.1)'],
+            borderWidth: 0,
+            borderRadius: 10
         }]
     },
-    options: pieConfig
+    options: gaugeConfig
 });
 
 // ==========================================
@@ -289,13 +275,8 @@ function onMessageArrived(message) {
         document.getElementById("temp-mini").innerText = valor.toFixed(1);
         updateSpecificChart(chartTemp, timeLabel, payload);
         
-        // Actualizar gráfico de pastel de temperatura
-        let frio = 0, normal = 0, caliente = 0;
-        if (valor < 18) frio = 100;
-        else if (valor < 28) normal = 100;
-        else caliente = 100;
-        tempPieChart.data.datasets[0].data = [frio, normal, caliente];
-        tempPieChart.update('none');
+        // Actualizar medidor de temperatura (0-100°C)
+        updateGauge(tempPieChart, valor, 100);
     }
     else if (topic === FEED_HUM) {
         let valor = parseFloat(payload);
@@ -303,13 +284,8 @@ function onMessageArrived(message) {
         document.getElementById("hum-mini").innerText = valor.toFixed(1);
         updateSpecificChart(chartHum, timeLabel, payload);
         
-        // Actualizar gráfico de pastel de humedad
-        let bajo = 0, normal = 0, alto = 0;
-        if (valor < 40) bajo = 100;
-        else if (valor < 70) normal = 100;
-        else alto = 100;
-        humPieChart.data.datasets[0].data = [bajo, normal, alto];
-        humPieChart.update('none');
+        // Actualizar medidor de humedad (0-100%)
+        updateGauge(humPieChart, valor, 100);
     }
     else if (topic === FEED_LUM) {
         let valor = parseFloat(payload);
@@ -317,14 +293,17 @@ function onMessageArrived(message) {
         document.getElementById("lum-mini").innerText = valor.toFixed(0);
         updateSpecificChart(chartLum, timeLabel, payload);
         
-        // Actualizar gráfico de pastel de luminosidad
-        let oscuro = 0, medio = 0, brillante = 0;
-        if (valor < 200) oscuro = 100;
-        else if (valor < 500) medio = 100;
-        else brillante = 100;
-        lumPieChart.data.datasets[0].data = [oscuro, medio, brillante];
-        lumPieChart.update('none');
+        // Actualizar medidor de luminosidad (0-1)
+        updateGauge(lumPieChart, valor, 1);
     }
+}
+
+// Función para actualizar los medidores tipo gauge
+function updateGauge(chart, value, max) {
+    const clampedValue = Math.max(0, Math.min(value, max));
+    const remaining = max - clampedValue;
+    chart.data.datasets[0].data = [clampedValue, remaining];
+    chart.update('none');
 }
 
 function updateSpecificChart(chartInstance, label, dataPoint) {
