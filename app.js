@@ -3,7 +3,7 @@
 // ==========================================
 const AIO_USERNAME = "Fran25";
 const PREFIJO = "aio_";
-const SECRETO = "rXMK98tltTFyTFISHsSwhRj3eiGE"; 
+const SECRETO = "XQeM26txkAmnnskBoTdmmxomC9lG"; 
 
 const AIO_KEY = PREFIJO + SECRETO;
 
