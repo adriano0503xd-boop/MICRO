@@ -123,7 +123,7 @@ chartLum = new Chart(ctxLum, {
     data: {
         labels: [],
         datasets: [{
-            label: 'Luminosidad (lux)',
+            label: 'Luminosidad',
             data: [],
             borderColor: '#fbbf24',
             backgroundColor: 'rgba(251, 191, 36, 0.1)',
@@ -151,9 +151,36 @@ const gaugeConfig = {
     cutout: '75%',
     plugins: {
         legend: { display: false },
-        tooltip: { enabled: false }
+        tooltip: { enabled: false },
+        datalabels: {
+            display: false
+        }
     }
 };
+
+// Plugin personalizado para mostrar el valor en el centro
+const centerTextPlugin = {
+    id: 'centerText',
+    afterDatasetsDraw(chart) {
+        const { ctx, chartArea: { width, height } } = chart;
+        ctx.save();
+        
+        const value = chart.config.data.datasets[0].data[0];
+        const unit = chart.config.options.plugins.centerText?.unit || '';
+        
+        ctx.font = 'bold 2.5em Inter, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const text = value.toFixed(1) + unit;
+        ctx.fillText(text, width / 2, height / 2 + 30);
+        
+        ctx.restore();
+    }
+};
+
+Chart.register(centerTextPlugin);
 
 // Medidor de Temperatura (0-100°C)
 const tempPieChart = new Chart(document.getElementById('tempPieChart'), {
@@ -167,7 +194,15 @@ const tempPieChart = new Chart(document.getElementById('tempPieChart'), {
             borderRadius: 10
         }]
     },
-    options: gaugeConfig
+    options: {
+        ...gaugeConfig,
+        plugins: {
+            ...gaugeConfig.plugins,
+            centerText: {
+                unit: '°C'
+            }
+        }
+    }
 });
 
 // Medidor de Humedad (0-100%)
@@ -182,7 +217,15 @@ const humPieChart = new Chart(document.getElementById('humPieChart'), {
             borderRadius: 10
         }]
     },
-    options: gaugeConfig
+    options: {
+        ...gaugeConfig,
+        plugins: {
+            ...gaugeConfig.plugins,
+            centerText: {
+                unit: '%'
+            }
+        }
+    }
 });
 
 // Medidor de Luminosidad (0-1)
@@ -197,7 +240,15 @@ const lumPieChart = new Chart(document.getElementById('lumPieChart'), {
             borderRadius: 10
         }]
     },
-    options: gaugeConfig
+    options: {
+        ...gaugeConfig,
+        plugins: {
+            ...gaugeConfig.plugins,
+            centerText: {
+                unit: ''
+            }
+        }
+    }
 });
 
 // ==========================================
