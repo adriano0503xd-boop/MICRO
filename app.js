@@ -162,6 +162,11 @@ const gaugeConfig = {
 const centerTextPlugin = {
     id: 'centerText',
     afterDatasetsDraw(chart) {
+        // Solo aplicar si el chart tiene la opción centerText configurada
+        if (!chart.config.options.plugins.centerText) {
+            return;
+        }
+        
         const { ctx, chartArea: { width, height } } = chart;
         ctx.save();
         
@@ -366,7 +371,7 @@ function updateGauge(chart, value, max) {
 
 function updateSpecificChart(chartInstance, label, dataPoint) {
     chartInstance.data.labels.push(label);
-    chartInstance.data.datasets[0].data.push(dataPoint);
+    chartInstance.data.datasets[0].data.push(parseFloat(dataPoint));
 
     if (chartInstance.data.labels.length > 20) {
         chartInstance.data.labels.shift();
