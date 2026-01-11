@@ -373,3 +373,6 @@ function updateSpecificChart(chartInstance, label, dataPoint) {
 // INICIAR CONEXIÓN AL CARGAR
 // ==========================================
 connectMQTT();
+
+
+
