@@ -6,7 +6,6 @@
     <title>Monitor Flashtemp - Piura</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!-- ✅ CORREGIDO: Versión específica de Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 </head>
@@ -17,7 +16,6 @@
     <div class="container">
         <div class="top-bar">
             <div class="logo-section">
-                <div class="logo-icon">🌡️</div>
                 <div class="title-group">
                     <h1>MONITOR FLASHTEMP</h1>
                     <div class="subtitle">Sistema de Monitoreo en Tiempo Real</div>
@@ -58,7 +56,6 @@
 
                 <div class="quick-stats">
                     <div class="stat-item">
-                        <div class="stat-icon-box">🌡️</div>
                         <div class="stat-content">
                             <div class="stat-label">Temperatura</div>
                             <span class="stat-value-inline" id="temp-mini">--</span>
@@ -66,7 +63,6 @@
                         </div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-icon-box">💧</div>
                         <div class="stat-content">
                             <div class="stat-label">Humedad</div>
                             <span class="stat-value-inline" id="hum-mini">--</span>
@@ -74,11 +70,9 @@
                         </div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-icon-box">💡</div>
                         <div class="stat-content">
                             <div class="stat-label">Luminosidad</div>
                             <span class="stat-value-inline" id="lum-mini">--</span>
-                            <span class="stat-unit-inline">lux</span>
                         </div>
                     </div>
                 </div>
@@ -89,7 +83,6 @@
                 <div class="sensor-module">
                     <div class="module-header">
                         <div class="header-left">
-                            <div class="module-icon">🌡️</div>
                             <div class="module-info">
                                 <h3>TEMPERATURA AMBIENTAL</h3>
                                 <p>Sensor en tiempo real</p>
@@ -131,7 +124,6 @@
                 <div class="sensor-module">
                     <div class="module-header">
                         <div class="header-left">
-                            <div class="module-icon">💧</div>
                             <div class="module-info">
                                 <h3>HUMEDAD RELATIVA</h3>
                                 <p>Sensor en tiempo real</p>
@@ -173,7 +165,6 @@
                 <div class="sensor-module">
                     <div class="module-header">
                         <div class="header-left">
-                            <div class="module-icon">💡</div>
                             <div class="module-info">
                                 <h3>LUMINOSIDAD AMBIENTAL</h3>
                                 <p>Sensor en tiempo real</p>
@@ -182,7 +173,6 @@
                         <div class="header-value">
                             <div>
                                 <span class="big-value" id="lum-value">--</span>
-                                <span class="big-unit">lux</span>
                             </div>
                             <div class="trend-indicator">
                                 <span>↗</span> En Vivo
@@ -214,7 +204,6 @@
         </div>
     </div>
 
-    <!-- ✅ CORREGIDO: Cambiado de script.js a app.js -->
     <script src="app.js"></script>
 </body>
 </html>
