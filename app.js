@@ -168,6 +168,12 @@ const centerTextPlugin = {
         const value = chart.config.data.datasets[0].data[0];
         const unit = chart.config.options.plugins.centerText?.unit || '';
         
+        // Verificar que el valor existe y es un número
+        if (value === undefined || value === null || isNaN(value)) {
+            ctx.restore();
+            return;
+        }
+        
         ctx.font = 'bold 2.5em Inter, sans-serif';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
@@ -373,6 +379,3 @@ function updateSpecificChart(chartInstance, label, dataPoint) {
 // INICIAR CONEXIÓN AL CARGAR
 // ==========================================
 connectMQTT();
-
-
-
