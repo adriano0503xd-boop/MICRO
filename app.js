@@ -165,10 +165,11 @@ const centerTextPlugin = {
         const { ctx, chartArea: { width, height } } = chart;
         ctx.save();
         
-        const value = chart.config.data.datasets[0].data[0];
+        const rawValue = chart.config.data.datasets[0].data[0];
         const unit = chart.config.options.plugins.centerText?.unit || '';
         
-        // Verificar que el valor existe y es un número
+        // Convertir a número y verificar validez
+        const value = Number(rawValue);
         if (value === undefined || value === null || isNaN(value)) {
             ctx.restore();
             return;
